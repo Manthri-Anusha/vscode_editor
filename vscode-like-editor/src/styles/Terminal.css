@@ -1,47 +1,61 @@
+/* Terminal.css */
+
 .terminal-container {
-  background-color: #1e1e1e;
-  color: #fff;
-  padding: 10px;
-  border-top: 1px solid #ccc;
+  background-color: #1e1e1e; /* Dark background for terminal */
+  color: #ffffff; /* White text color */
+  font-family: 'Courier New', Courier, monospace; /* Monospace font for terminal */
+  border: 1px solid #333; /* Border around the terminal */
+  border-radius: 5px; /* Rounded corners */
+  padding: 10px; /* Padding inside the terminal */
+  height: 400px; /* Fixed height for the terminal */
+  display: flex;
+  flex-direction: column; /* Stack children vertically */
 }
 
 .terminal-tabs {
-  display: flex;
-  border-bottom: 1px solid #ccc;
+  display: flex; /* Flexbox for tabs */
+  border-bottom: 1px solid #333; /* Bottom border for tabs */
 }
 
 .terminal-tab {
-  padding: 10px;
-  cursor: pointer;
+  padding: 10px; /* Padding for each tab */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s; /* Smooth background transition */
 }
 
 .terminal-tab.active {
-  background-color: #333;
+  background-color: #333; /* Active tab background */
+  color: #ffffff; /* Active tab text color */
+}
+
+.terminal-tab:hover {
+  background-color: #444; /* Hover effect for tabs */
 }
 
 .terminal-content {
-  padding: 10px;
-  height: 200px; /* Adjust height as needed */
-  overflow-y: auto;
+  flex: 1; /* Allow content to grow */
+  overflow-y: auto; /* Enable scrolling */
+  padding: 10px; /* Padding for terminal content */
 }
 
 .terminal-output {
-  font-family: monospace;
+  white-space: pre-wrap; /* Preserve whitespace and line breaks */
 }
 
 .terminal-line {
-  margin: 5px 0;
+  margin: 0; /* Remove margin for lines */
 }
 
-.terminal-placeholder {
-  color: #888;
+input[type="text"] {
+  width: 100%; /* Full width input */
+  background-color: #1e1e1e; /* Match terminal background */
+  color: #ffffff; /* White text color */
+  border: none; /* No border */
+  outline: none; /* Remove outline */
+  padding: 5px; /* Padding for input */
+  font-family: 'Courier New', Courier, monospace; /* Monospace font for input */
 }
 
-input {
-  width: 100%;
-  background-color: transparent;
-  border: none;
-  color: #fff;
-  font-family: monospace;
-  outline: none;
+input[type="text"]::placeholder {
+  color: #888; /* Placeholder text color */
 }

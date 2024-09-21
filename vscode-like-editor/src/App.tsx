@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Courses from "./components/Courses";
-import Terminal from './components/Terminal'; // Import the Terminal component
+import Terminal from './components/Terminal'; // Your existing terminal component
+import XTermTerminal from './components/XTermTerminal'; // Import the XTermTerminal component
 import { File, Folder } from './components/types'; // Import types
 import './App.css';
 
@@ -11,6 +12,7 @@ const App: React.FC = () => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [isTerminalVisible, setIsTerminalVisible] = useState<boolean>(false); // State to control terminal visibility
+  const [useXTerm, setUseXTerm] = useState<boolean>(true); // State to choose which terminal to use
   const [isMinimized, setIsMinimized] = useState<boolean>(false); // State to control minimize
   const [isMaximized, setIsMaximized] = useState<boolean>(false); // State to control maximize
 
@@ -124,7 +126,7 @@ const App: React.FC = () => {
         </div>
       </div>
       <div className="footer">
-        {isTerminalVisible && <Terminal defaultCommand={selectedCourse || ''} folders={folders} setFolders={setFolders} />} {/* Pass folders and setFolders to Terminal */}
+        {isTerminalVisible && (useXTerm ? <XTermTerminal /> : <Terminal defaultCommand={selectedCourse || ''} folders={folders} setFolders={setFolders} />)}
       </div>
     </div>
   );
