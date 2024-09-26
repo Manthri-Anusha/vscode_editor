@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import EditorArea from './EditorArea'
-import Terminal from './Terminal'
+import Terminal from './XTermTerminal'
 import '../styles/Editor.css'
 
 const Editor: React.FC = () => {

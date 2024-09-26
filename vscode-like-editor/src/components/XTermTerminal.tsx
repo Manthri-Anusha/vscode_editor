@@ -1,55 +1,81 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal } from 'xterm';
 import 'xterm/css/xterm.css';
-import axios from 'axios';
 
-const XTermTerminal: React.FC = () => {
+const XTermTerminal: React.FC<{
+  onUpdateSidebar: () => void;
+}> = ({ onUpdateSidebar }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xterm = useRef<Terminal | null>(null);
-  const commandBuffer = useRef<string>(''); // Buffer to store the command
+  const currentInput = useRef<string>('');
+  const currentDirectory = useRef<string>('');
 
   useEffect(() => {
     if (terminalRef.current) {
       xterm.current = new Terminal();
       xterm.current.open(terminalRef.current);
-      xterm.current.write('Welcome to the terminal!\r\n');
+      xterm.current.write('Welcome to the terminal!\r\n$ ');
 
       xterm.current.onData((data) => {
-        // Handle input data
-        if (data === '\u0003') { // Ctrl+C
-          xterm.current?.write('\r\n');
-          commandBuffer.current = ''; // Clear command buffer
-          return;
-        }
-
-        if (data === '\r') { // Enter key
-          xterm.current?.write('\r\n'); // Move to the next line
-          const command = commandBuffer.current.trim();
-          if (command) {
-            xterm.current?.write(`$ ${command}\r\n`); // Echo the command
-            // Send command to the backend
-            axios.post('http://localhost:5000/execute', { command })
-              .then(response => {
-                xterm.current?.write(response.data.output + '\r\n');
-              })
-              .catch(error => {
-                xterm.current?.write(`Error: ${error.response?.data?.error || 'Unknown error'}\r\n`);
-              });
+        if (data.charCodeAt(0) === 13) { // Enter key
+          executeCommand(currentInput.current.trim());
+          currentInput.current = '';
+        } else if (data.charCodeAt(0) === 127) { // Backspace
+          if (currentInput.current.length > 0) {
+            currentInput.current = currentInput.current.slice(0, -1);
+            xterm.current?.write('\b \b');
           }
-          commandBuffer.current = ''; // Clear command buffer
-          xterm.current?.write('> '); // Prompt for the next command
-        } else if (data === '\u007F') { // Handle backspace
-          commandBuffer.current = commandBuffer.current.slice(0, -1);
-          xterm.current?.write('\b \b'); // Remove last character from terminal
         } else {
-          commandBuffer.current += data; // Append data to command buffer
-          xterm.current?.write(data); // Echo the character
+          currentInput.current += data;
+          xterm.current?.write(data);
         }
       });
     }
+
+    return () => {
+      xterm.current?.dispose();
+    };
   }, []);
 
-  return <div ref={terminalRef} style={{ height: '400px', width: '100%' }} />;
+  const executeCommand = async (command: string) => {
+    xterm.current?.writeln('');
+    if (!command) {
+      xterm.current?.write('$ ');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          command,
+          currentDirectory: currentDirectory.current 
+        }),
+      });
+      const data = await response.json();
+      
+      if (data.error) {
+        xterm.current?.writeln(`Error: ${data.error}`);
+      } else {
+        xterm.current?.writeln(data.output);
+        if (data.newDirectory) {
+          currentDirectory.current = data.newDirectory;
+        }
+        onUpdateSidebar(); // Call this after every successful command
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        xterm.current?.writeln(`Error: ${error.message}`);
+      } else {
+        xterm.current?.writeln(`An unknown error occurred`);
+      }
+    }
+
+    xterm.current?.write('$ ');
+  };
+
+  return <div ref={terminalRef} style={{ height: '300px', width: '100%' }} />;
 };
 
 export default XTermTerminal;

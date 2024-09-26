@@ -38,7 +38,6 @@ const EditorArea: React.FC<EditorAreaProps> = ({ activeIcon }) => {
         <CodeEditor fileName={currentFile} initialContent={fileContent} onSave={handleSaveFile} />
       );
     }
-
     switch (activeIcon) {
       case 'files':
         return (
