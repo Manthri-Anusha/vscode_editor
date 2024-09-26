@@ -1,94 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Courses from "./components/Courses";
-import Terminal from './components/Terminal'; // Your existing terminal component
-import XTermTerminal from './components/XTermTerminal'; // Import the XTermTerminal component
-import { File, Folder } from './components/types'; // Import types
+import 'xterm/css/xterm.css';
 import './App.css';
+import { File, Folder } from './components/types'; // Import types
+import XTermTerminal from './components/XTermTerminal'; // Import the terminal component
 
 const App: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [isTerminalVisible, setIsTerminalVisible] = useState<boolean>(false); // State to control terminal visibility
-  const [useXTerm, setUseXTerm] = useState<boolean>(true); // State to choose which terminal to use
-  const [isMinimized, setIsMinimized] = useState<boolean>(false); // State to control minimize
-  const [isMaximized, setIsMaximized] = useState<boolean>(false); // State to control maximize
-
-  const handleSelectCourse = (courseName: string) => {
-    setSelectedCourse(courseName);
-    if (!folders.find(folder => folder.name === courseName)) {
-      setFolders([...folders, { name: courseName, files: [], folders: [] }]);
-    }
-  };
+  const [folders, setFolders] = useState<Folder[]>([]); // State to manage folders
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xterm = useRef<typeof XTermTerminal | null>(null);
+  const currentInput = useRef<string>(''); // Store current input
 
   const toggleTerminal = () => {
     setIsTerminalVisible(prev => !prev);
   };
 
-  const handleCreateFolder = (parentFolderName: string, folderName: string) => {
-    const updateFolders = (folders: Folder[]): Folder[] => {
-      return folders.map(folder => {
-        if (folder.name === parentFolderName) {
-          return { ...folder, folders: [...folder.folders, { name: folderName, files: [], folders: [] }] };
-        }
-        return { ...folder, folders: updateFolders(folder.folders) };
-      });
-    };
-
-    setFolders(updateFolders(folders));
+  const handleSelectCourse = (courseName: string) => {
+    setSelectedCourse(courseName);
+    // Check if the course already exists to avoid duplicates
+    if (!folders.some(folder => folder.name === courseName)) {
+      setFolders(prevFolders => [...prevFolders, { name: courseName, files: [], folders: [] }]); // Add selected course as a folder
+    }
   };
-
-  const handleCreateFile = (parentFolderName: string, fileName: string) => {
-    const newFile = { id: Date.now().toString(), name: fileName, content: '' };
-
-    const updateFolders = (folders: Folder[]): Folder[] => {
-      return folders.map(folder => {
-        if (folder.name === parentFolderName) {
-          return { ...folder, files: [...folder.files, newFile] };
-        }
-        return { ...folder, folders: updateFolders(folder.folders) };
-      });
-    };
-
-    setFolders(updateFolders(folders));
-  };
-
-  const handleOpenFile = (file: File) => {
-    setCurrentFile(file);
-  };
-
-  const handleUpdateFileContent = (fileId: string, newContent: string) => {
-    const updatedFiles = folders.flatMap(folder => folder.files).map(file => {
-      if (file.id === fileId) {
-        return { ...file, content: newContent };
+  
+  const refreshFolderStructure = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/folder-structure');
+      if (response.ok) {
+        const structure = await response.json();
+        setFolders(structure);
+      } else {
+        console.error('Failed to fetch folder structure');
       }
-      return file;
-    });
+    } catch (error) {
+      console.error('Error fetching folder structure:', error);
+    }
+  };
 
+  const handleCreateFolder = async (parentFolderName: string, folderName: string) => {
+    try {
+      const response = await fetch('http://localhost:5000/create-folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ parentPath: parentFolderName, folderName }),
+      });
+      if (response.ok) {
+        await refreshFolderStructure(); // Refresh the folder structure after creating a folder
+      } else {
+        console.error('Failed to create folder');
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error);
+    }
+  };
+  const handleCreateFile = async (parentFolderName: string, fileName: string) => {
     setFolders(prevFolders => {
-      return prevFolders.map(folder => ({
-        ...folder,
-        files: updatedFiles.filter(file => !folder.files.some(f => f.id === file.id)),
-      }));
+      const newFolders = [...prevFolders];
+      const parentFolder = findFolder(newFolders, parentFolderName);
+      if (parentFolder && !parentFolder.files.some(file => file.name === fileName)) {
+        parentFolder.files.push({ id: fileName, name: fileName, content: '' }); // Add new file to the correct parent
+      }
+      return newFolders;
     });
+    await refreshFolderStructure();
   };
 
-  const handleMinimize = () => {
-    setIsMinimized(true);
-    setIsMaximized(false);
+  const findFolder = (folders: Folder[], folderName: string): Folder | undefined => {
+    for (const folder of folders) {
+      if (folder.name === folderName) {
+        return folder;
+      }
+      const found = findFolder(folder.folders, folderName);
+      if (found) {
+        return found;
+      }
+    }
+    return undefined;
   };
 
-  const handleMaximize = () => {
-    setIsMaximized(!isMaximized);
-    setIsMinimized(false);
-  };
-
-  const handleClose = () => {
-    setIsMinimized(false);
-    setIsMaximized(false);
-    setSelectedCourse(null); // Optionally reset the selected course
+  const handleCreateReactApp = (appName: string) => {
+    setFolders(prevFolders => {
+      const newFolders = [...prevFolders];
+      newFolders.push({ name: appName, files: [], folders: [] }); // Add new React app folder
+      return newFolders;
+    });
   };
 
   return (
@@ -96,38 +97,37 @@ const App: React.FC = () => {
       <Header 
         onNewFile={() => {}} 
         onSaveFile={() => {}} 
-        onCloseWindow={handleClose} 
-        onMinimize={handleMinimize} 
-        onMaximize={handleMaximize} 
+        onCloseWindow={() => {}} 
+        onMinimize={() => {}} 
+        onMaximize={() => {}} 
         onToggleTerminal={toggleTerminal} // Pass the toggle function
       />
-      <div className={`main ${isMinimized ? 'minimized' : ''} ${isMaximized ? 'maximized' : ''}`}>
+      <div className="main">
         <Sidebar 
-          folders={folders} 
-          onCreateFolder={handleCreateFolder}
-          onCreateFile={handleCreateFile}
-          onOpenFile={handleOpenFile} // Pass the open file handler
+          folders={folders} // Pass the folders state to Sidebar
+          onCreateFolder={handleCreateFolder} 
+          onCreateFile={handleCreateFile} 
+          onOpenFile={() => {}} 
         />
         <div className="content">
           {!selectedCourse ? (
-            <Courses onSelectCourse={handleSelectCourse} />
+            <Courses onSelectCourse={handleSelectCourse} /> // Pass the updated handler
           ) : (
             <div className="editor-layout">
-              {currentFile && (
-                <div className="editor">
-                  <textarea
-                    value={currentFile.content}
-                    onChange={(e) => handleUpdateFileContent(currentFile.id, e.target.value)}
-                  />
-                </div>
-              )}
+              {/* Your editor layout here */}
             </div>
           )}
         </div>
       </div>
-      <div className="footer">
-        {isTerminalVisible && (useXTerm ? <XTermTerminal /> : <Terminal defaultCommand={selectedCourse || ''} folders={folders} setFolders={setFolders} />)}
-      </div>
+      {isTerminalVisible && ( // Conditionally render the terminal
+        <XTermTerminal 
+          onUpdateSidebar={(path: string) => {
+            // Update sidebar logic here
+            // For example, you might want to refresh the folder structure
+            // or select a specific file/folder based on the path
+          }}
+        />
+      )}
     </div>
   );
 };

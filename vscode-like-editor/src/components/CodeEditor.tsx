@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// import '../styles/CodeEditor.css';
 
 interface CodeEditorProps {
   fileName: string;
